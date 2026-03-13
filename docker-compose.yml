@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  cyberwatch:
+    build: .
+    container_name: cyberwatch
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./logs:/app/logs          # persist alert logs
+      - ./data:/app/data          # mount log files here
+      - ./ml:/app/ml              # persist trained model
+    environment:
+      - STREAMLIT_SERVER_HEADLESS=true
+    restart: unless-stopped
+
+  # Optional: run agent pipeline as a separate service
+  pipeline:
+    build: .
+    container_name: cyberwatch-pipeline
+    command: python main.py --tail /app/data/access.log
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./ml:/app/ml
+    depends_on:
+      - cyberwatch
+    restart: unless-stopped

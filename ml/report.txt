@@ -1,0 +1,10 @@
+Isolation Forest Report
+Generated: 2026-03-13 12:46:59
+────────────────────────────────────────
+Total samples    : 6
+Normal (1)       : 5  (83.3%)
+Anomalous (-1)   : 1  (16.7%)
+Contamination    : 0.3
+Score range      : [-0.1317, 0.0565]
+────────────────────────────────────────
+Features used    : ['status', 'size', 'hour', 'is_error', 'is_auth_fail', 'login_attempt', 'ip_total_requests', 'ip_error_count', 'error_rate_ip', 'is_new_ip']
