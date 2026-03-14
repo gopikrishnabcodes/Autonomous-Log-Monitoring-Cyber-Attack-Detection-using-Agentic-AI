@@ -381,7 +381,7 @@ with col1:
             margin=dict(l=0, r=0, t=10, b=0),
             height=220,
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     else:
         st.markdown('<p style="color:#2a3a4a; font-family:Share Tech Mono; font-size:12px;">No data in selected window</p>', unsafe_allow_html=True)
 
@@ -405,7 +405,7 @@ with col2:
             margin=dict(l=0, r=0, t=10, b=0),
             height=220,
         )
-        st.plotly_chart(fig2, use_container_width=True)
+        st.plotly_chart(fig2, width='stretch')
 
 
 # ── Top IPs ─────────────────────────────────────────────
@@ -457,6 +457,6 @@ with col4:
 # ── Raw data table ───────────────────────────────────────
 with st.expander("📋  Full alert log"):
     display_cols = [c for c in ["timestamp","level","ip","attack_type","confidence","url","status_code","rules"] if c in df.columns]
-    st.dataframe(df[display_cols].head(200), use_container_width=True, hide_index=True)
+    st.dataframe(df[display_cols].head(200), width='stretch', hide_index=True)
     if st.button("⬇  Export CSV"):
         st.download_button("Download", df.to_csv(index=False), "alerts_export.csv", "text/csv")
