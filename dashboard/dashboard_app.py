@@ -205,6 +205,7 @@ st.markdown("""
 # ── Data loading ─────────────────────────────────────────
 
 CSV_PATH = Path("logs/alerts.csv")
+CICIDS_PATH = Path("data/Friday-WorkingHours-Afternoon-PortScan.pcap_ISCX.csv")
 
 def load_demo_data() -> pd.DataFrame:
     """Generate realistic synthetic alert data for the demo."""
@@ -241,6 +242,26 @@ def load_demo_data() -> pd.DataFrame:
 
 @st.cache_data(ttl=10)
 def load_data() -> pd.DataFrame:
+    """
+    Load data with priority:
+    1. CIC-IDS 2017 dataset (if available)
+    2. AlertAgent CSV logs (if available)
+    3. Demo data (fallback)
+    
+    All timestamps are normalized to tz-naive UTC for consistent filtering.
+    """
+    
+    # Priority 1: CIC-IDS dataset
+    if CICIDS_PATH.exists():
+        try:
+            from dashboard.cicids_loader import load_cicids_for_dashboard
+            df = load_cicids_for_dashboard(str(CICIDS_PATH))
+            print(f"[Dashboard] Loaded {len(df)} threats from CIC-IDS dataset")
+            return df
+        except Exception as e:
+            st.warning(f"Failed to load CIC-IDS dataset: {e}. Falling back to alerts.csv")
+    
+    # Priority 2: AlertAgent logs
     if CSV_PATH.exists():
         for enc in ("utf-8", "latin-1", "cp1252"):
             try:
@@ -250,7 +271,11 @@ def load_data() -> pd.DataFrame:
                 continue
         df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce", utc=True)
         df["timestamp"] = df["timestamp"].dt.tz_localize(None)  # strip tz → naive UTC
+        print(f"[Dashboard] Loaded {len(df)} alerts from logs/alerts.csv")
         return df
+    
+    # Priority 3: Demo data
+    print("[Dashboard] Using demo data (no real data sources found)")
     return load_demo_data()
 
 
@@ -289,12 +314,22 @@ with st.sidebar:
 
 # ── Load + filter ────────────────────────────────────────
 df = load_data()
+
+# DEBUG: Show data stats (comment out in production)
+# st.sidebar.markdown("---")
+# st.sidebar.markdown(f"**Data loaded:** {len(df)} rows")
+# st.sidebar.markdown(f"**Time range:** {df['timestamp'].min()} to {df['timestamp'].max()}")
+
 df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
 # Normalize: strip timezone so comparison is always tz-naive
 if df["timestamp"].dt.tz is not None:
     df["timestamp"] = df["timestamp"].dt.tz_convert("UTC").dt.tz_localize(None)
 cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=show_hours)
+df_before_filter = len(df)
 df = df[df["timestamp"] >= cutoff]
+
+# DEBUG: Show filtering stats
+# st.sidebar.markdown(f"**After time filter:** {len(df)} rows (cutoff: {cutoff})")
 
 if show_level == "ALERT only":
     df = df[df["level"] == "ALERT"]
