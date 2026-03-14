@@ -15,7 +15,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import sys
 
@@ -242,8 +242,14 @@ def load_demo_data() -> pd.DataFrame:
 @st.cache_data(ttl=10)
 def load_data() -> pd.DataFrame:
     if CSV_PATH.exists():
-        df = pd.read_csv(CSV_PATH)
-        df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
+        for enc in ("utf-8", "latin-1", "cp1252"):
+            try:
+                df = pd.read_csv(CSV_PATH, encoding=enc)
+                break
+            except UnicodeDecodeError:
+                continue
+        df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce", utc=True)
+        df["timestamp"] = df["timestamp"].dt.tz_localize(None)  # strip tz → naive UTC
         return df
     return load_demo_data()
 
@@ -284,7 +290,10 @@ with st.sidebar:
 # ── Load + filter ────────────────────────────────────────
 df = load_data()
 df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
-cutoff = datetime.now() - timedelta(hours=show_hours)
+# Normalize: strip timezone so comparison is always tz-naive
+if df["timestamp"].dt.tz is not None:
+    df["timestamp"] = df["timestamp"].dt.tz_convert("UTC").dt.tz_localize(None)
+cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=show_hours)
 df = df[df["timestamp"] >= cutoff]
 
 if show_level == "ALERT only":
@@ -301,7 +310,7 @@ st.markdown(f"""
   <div class="status-dot"></div>
   <div>
     <div class="cyber-title">Cyber<span>Watch</span></div>
-    <div class="cyber-subtitle">Autonomous Attack Detection &nbsp;·&nbsp; Live Monitor &nbsp;·&nbsp; {datetime.now().strftime('%Y-%m-%d %H:%M')}</div>
+    <div class="cyber-subtitle">Autonomous Attack Detection &nbsp;·&nbsp; Live Monitor &nbsp;·&nbsp; {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')} UTC</div>
   </div>
 </div>
 """, unsafe_allow_html=True)
