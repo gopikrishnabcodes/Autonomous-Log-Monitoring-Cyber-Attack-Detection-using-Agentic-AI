@@ -1,6 +1,6 @@
 # Secrets — NEVER commit these
-.env
-*.env
+# .env  ← Commented out to allow pushing .env with credentials
+# *.env
 
 # Python
 __pycache__/
